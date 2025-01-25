@@ -2,11 +2,14 @@ import sqlite3
 from typing import Optional, Dict, List
 from datetime import datetime
 import json
+from client.config import Config
 
 class DatabaseManager:
-    def __init__(self, db_path: str):
-        self.db_path = db_path
-        self.conn = sqlite3.connect(db_path)
+    def __init__(self, db_path=None):
+        self.config = Config()
+        db_config = self.config.get_database_config()
+        self.db_path = db_path or db_config.get("path")
+        self.conn = sqlite3.connect(self.db_path)
         self._check_and_update_schema()
 
     def _check_and_update_schema(self):
@@ -31,6 +34,9 @@ class DatabaseManager:
             self._create_tables_v1()
             cursor.execute("INSERT INTO db_version (version) VALUES (1)")
             self.conn.commit()
+        # 添加版本回滚机制
+        elif current_version > 1:  
+            raise ValueError("检测到新版数据库，请升级客户端")
         
         # 未来版本更新可以这样添加
         # if current_version < 2:
@@ -150,8 +156,12 @@ class DatabaseManager:
         if not kwargs:
             return False
         
-        valid_fields = ['name', 'author', 'theme', 'style', 'topic', 'status']
+        # 使用白名单验证字段
+        valid_fields = {'name', 'author', 'theme', 'style', 'topic', 'status'}
         updates = {k: v for k, v in kwargs.items() if k in valid_fields}
+        # 添加字段存在性检查
+        if 'name' in updates and not updates['name'].strip():
+            raise ValueError("项目名称不能为空")
         
         if not updates:
             return False

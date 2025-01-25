@@ -4,33 +4,15 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QPushButton, QMessa
 from client.database import DatabaseManager
 import sqlite3
 import os
-
-class Config:
-    def __init__(self):
-        self.config_path = "config.json"
-        self.default_config = {
-            "api_key": "",
-            "model": "gpt-3.5-turbo",
-            "max_tokens": 2000,
-            "temperature": 0.7
-        }
-        self.config = self.load_config()
-
-    def load_config(self):
-        if os.path.exists(self.config_path):
-            with open(self.config_path, 'r') as f:
-                return json.load(f)
-        return self.default_config
-
-    def save_config(self):
-        with open(self.config_path, 'w') as f:
-            json.dump(self.config, f, indent=4)
+from client.config import Config
 
 class ContentGenerator:
-    def __init__(self, db_conn, api_key):
+    def __init__(self, db_conn):
         self.db = db_conn
-        openai.api_key = api_key
-        openai.api_base = "https://api.openai.com/v1"  # 或者使用兼容API的地址
+        self.config = Config()
+        openai_config = self.config.get_openai_config()
+        openai.api_key = openai_config.get("api_key")
+        openai.api_base = openai_config.get("api_base")
         
     def generate_chapter(self, project_id, chapter_index, style_params):
         """生成章节内容"""
@@ -52,15 +34,22 @@ class ContentGenerator:
             prompt += f"字数要求：{style_params.get('length', 2000)}字\n"
             prompt += "请生成详细的章节内容，注意保持情节连贯性和人物性格一致性。"
             
+            # 使用配置中的参数
+            generation_config = self.config.get_generation_config("content")
+            
+            # 添加长度限制
+            MAX_CHAPTER_LENGTH = 10000  # 添加合理的上限
+            max_tokens = min(generation_config.get("max_tokens"), MAX_CHAPTER_LENGTH)
+            
             # 调用OpenAI API
             response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model=self.config.get_openai_config().get("model"),
                 messages=[
                     {"role": "system", "content": "你是一个专业的小说创作助手"},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,
-                max_tokens=2000
+                temperature=generation_config.get("temperature"),
+                max_tokens=max_tokens
             )
             
             content = response['choices'][0]['message']['content']
@@ -70,7 +59,7 @@ class ContentGenerator:
             return content
         
         except openai.error.APIError as e:
-            QMessageBox.critical(None, "API错误", f"OpenAI API调用失败: {str(e)}")
+            self.error_occurred.emit("API错误", str(e))
         except sqlite3.Error as e:
             QMessageBox.critical(None, "数据库错误", f"数据库操作失败: {str(e)}")
         except Exception as e:
