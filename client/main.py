@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QMessageBox
 from client.modules.outline_generator import OutlineGenerator, OutlineEditor
 from client.modules.content_generator import ContentGenerator, ContentEditor
 from client.database import DatabaseManager
@@ -8,11 +8,20 @@ from client.config import ConfigManager
 class MainWindow(QMainWindow):
     def __init__(self, db, config, parent=None):
         super().__init__(parent)
-        self.db = db
-        self.config = config
-        self.init_ui()
-        self.outline_gen = OutlineGenerator(self.db.conn)
-        self.content_gen = ContentGenerator(self.db.conn)
+        try:
+            # 提前验证核心配置
+            assert config.get_openai_config().get('api_key'), "OpenAI API密钥未配置"
+            assert config.get_generation_config('outline'), "大纲生成配置缺失"
+            assert config.get_generation_config('content'), "内容生成配置缺失"
+            
+            self.db = db
+            self.config = config
+            self.init_ui()
+            self.outline_gen = OutlineGenerator(self.db.conn)
+            self.content_gen = ContentGenerator(self.db.conn)
+        except Exception as e:
+            QMessageBox.critical(None, "启动失败", f"关键配置校验失败: {str(e)}")
+            sys.exit(1)
         
     def init_ui(self):
         self.setWindowTitle("小说创作助手")

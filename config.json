@@ -1,0 +1,23 @@
+{
+    "openai": {
+        "api_key": "sk-e00894822b274e7b865d2ad84d2b5f9c",
+        "api_base": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "temperature": 1.7,
+        "max_tokens": 2000
+    },
+    "database": {
+        "path": "novel_writer.db"
+    },
+    "generation": {
+        "outline": {
+            "detail_level": 3,
+            "enable_worldbuilding": true,
+            "max_scenes_per_chapter": 5
+        },
+        "content": {
+            "temperature": 1.7,
+            "max_tokens": 2000
+        }
+    }
+} 

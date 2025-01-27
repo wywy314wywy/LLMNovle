@@ -74,6 +74,8 @@ class DatabaseManager:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             project_id INTEGER NOT NULL,
             content TEXT NOT NULL,
+            version INTEGER DEFAULT 1,
+            analysis TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
         )
